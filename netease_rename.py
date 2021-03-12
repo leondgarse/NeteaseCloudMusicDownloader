@@ -145,7 +145,7 @@ def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True,
         song_id = song_info["id"]
     try:
         tt = eyed3.load(file_path)
-        tt.initTag()
+        tt.initTag(eyed3.id3.ID3_V2_3)
         tt.tag.title = song_info["title"]
         tt.tag.artist = song_info["artist"]
         tt.tag.album = song_info["album"]
