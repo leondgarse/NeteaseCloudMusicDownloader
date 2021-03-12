@@ -38,20 +38,18 @@ def detect_netease_music_name(song_id):
 
     song_info = {}
     song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ")
-    song_info["artist"] = rr["songs"][0]["ar"][0]["name"]
+    song_info["artist"] = ','.join([ii['name'] for ii in rr["songs"][0]["ar"]])
     song_info["album"] = rr["songs"][0]["al"]["name"]
     song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
     song_info["cover_image"] = rr["songs"][0]["al"]["picUrl"]
     song_info["id"] = song_id
 
-    song_info["album_artist"] = rr["songs"][0]["ar"][0]["name"]
+    album_detail = netease_get_album_detial(rr["songs"][0]["al"]["id"])
     publish_time = int(rr["songs"][0]["publishTime"])
     if publish_time == 0:
-        url_album_base = "http://music.163.com/api/album/{}"
-        url_album = url_album_base.format(rr["songs"][0]["al"]["id"])
-        album_ret = requests.get(url_album, headers=headers).json()
-        publish_time = int(album_ret["album"]["publishTime"])
+        publish_time = int(album_detail["album"]["publishTime"])
     song_info["year"] = str(datetime.fromtimestamp(publish_time / 1000).year)
+    song_info["album_artist"] = album_detail["album"]["artist"]["name"]
 
     return song_info, rr
 
@@ -79,13 +77,17 @@ def netease_parse_playlist_2_list(playlist_id):
         yield song_item["id"]
 
 
-def netease_parse_album_2_list(album_id):
+def netease_get_album_detial(album_id):
     url_album_base = "http://music.163.com/api/album/{}"
     # url_album_base = "https://music.163.com/weapi/vipmall/albumproduct/detail?id={}"
     url_album = url_album_base.format(album_id)
-
     resp = requests.get(url_album, headers=headers)
-    for song_item in resp.json()["album"]["songs"]:
+    return resp.json()
+
+
+def netease_parse_album_2_list(album_id):
+    album_detail = netease_get_album_detial(album_id)
+    for song_item in album_detail["album"]["songs"]:
         yield song_item["id"]
 
 
@@ -110,18 +112,17 @@ def netease_cached_queue_2_song_info():
     for song_item in rr:
         song_info = {}
         song_info["title"] = song_item["track"]["name"].replace("\xa0", " ")
-        song_info["artist"] = song_item["track"]["artists"][0]["name"]
+        song_info["artist"] = ','.join([ii['name'] for ii in song_item["track"]["artists"]])
         song_info["album"] = song_item["track"]["album"]["name"]
         song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
         song_info["id"] = song_item["track"]["id"]
         song_info["cover_image"] = song_item["track"]["album"]["picUrl"]
         song_info["url"] = song_item.get("lastPlayInfo", {}).get("retJson", {}).get("url", None)
 
-        url_album = url_album_base.format(song_item["track"]["album"]["id"])
-        album_ret = requests.get(url_album, headers=headers).json()
-        # print(url_album, album_ret["code"])
-        song_info["year"] = str(datetime.fromtimestamp(int(album_ret["album"]["publishTime"]) / 1000).year)
-        song_info["album_artist"] = album_ret["album"]["artist"]["name"]
+        album_detail = netease_get_album_detial(song_item["track"]["album"]["id"])
+        # print(url_album, album_detail["code"])
+        song_info["year"] = str(datetime.fromtimestamp(int(album_detail["album"]["publishTime"]) / 1000).year)
+        song_info["album_artist"] = album_detail["album"]["artist"]["name"]
         yield song_info
 
 
