@@ -2,6 +2,7 @@
 
 import requests
 import json
+import io
 import os
 import sys
 import argparse
@@ -9,6 +10,7 @@ import eyed3
 import shutil
 from datetime import datetime
 from time import sleep
+from PIL import Image
 
 headers = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0"}
 
@@ -134,7 +136,7 @@ def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
     return dist_name
 
 
-def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True, song_format="mp3", SAVE_COVER_IAMGE=True):
+def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True, song_format="mp3", SAVE_COVER_IAMGE_SIZE=320):
     if not os.path.exists(dist_path):
         os.mkdir(dist_path)
 
@@ -157,10 +159,21 @@ def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True,
             % (song_id, tt.tag.title, tt.tag.artist, tt.tag.album, tt.tag.album_artist, tt.tag.track_num, song_info["year"])
         )
 
-        if SAVE_COVER_IAMGE:
+        if SAVE_COVER_IAMGE_SIZE > 0:
             pic_url = song_info["cover_image"]
             resp = requests.get(pic_url)
-            tt.tag.images.set(3, resp.content, "image/jpeg", "album cover")
+            image_data = resp.content
+            cc = Image.open(io.BytesIO(image_data))
+            if cc.mode != "RGB":
+                cc = cc.convert("RGB")
+            ww, hh = cc.size
+            max_size = min([max([ww, hh]), SAVE_COVER_IAMGE_SIZE])
+            target_ww = max_size if ww > hh else int(max_size * ww / hh)
+            target_hh = max_size if hh > ww else int(max_size * hh / ww)
+            dd = cc.resize((target_ww, target_hh))
+            buf = io.BytesIO()
+            dd.save(buf, format='JPEG')
+            tt.tag.images.set(3, buf.getvalue(), "image/jpeg", "album cover")
         tt.tag.save(encoding="utf8")
     except UnicodeDecodeError as err:
         print("EyeD3 decode error: %s" % err)

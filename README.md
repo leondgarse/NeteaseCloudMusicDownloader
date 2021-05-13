@@ -39,6 +39,7 @@
     - **Crypto** 加密
 
 # 参考项目
+  - [darknessomi/musicbox](https://github.com/darknessomi/musicbox)
   - [Binaryify/NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi.git)
   - [codezjx/netease-cloud-music-dl](https://github.com/codezjx/netease-cloud-music-dl)
   - [YongHaoWu/NeteaseCloudMusicFlac](https://github.com/YongHaoWu/NeteaseCloudMusicFlac)
