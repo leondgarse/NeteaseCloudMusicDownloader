@@ -149,7 +149,7 @@ def netease_download_list(song_list, dist_path, single_download_func=netease_dow
 
 
 def parse_arguments(argv):
-    default_dist_path = "./netease_download_music"
+    default_dist_path = "netease_download_music"
     default_playlist_id = "101562485"
 
     parser = argparse.ArgumentParser(

@@ -200,8 +200,8 @@ def netease_cached_queue_2_song_info():
 
 
 def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
-    aa = artist.replace("/", " ").replace(":", " ").replace("?", " ").strip()
-    tt = title.replace("/", " ").replace(":", " ").replace("?", " ").strip()
+    aa = artist.replace(os.sep, " ").replace(":", " ").replace("?", " ").strip()
+    tt = title.replace(os.sep, " ").replace(":", " ").replace("?", " ").strip()
     dist_name = os.path.join(dist_path, "%s - %s" % (aa, tt)) + "." + song_format
 
     return dist_name

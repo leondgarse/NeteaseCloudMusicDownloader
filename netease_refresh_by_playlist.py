@@ -100,7 +100,7 @@ def netease_refresh_by_songlist(source_path, dist_path, song_list, single_downlo
 
 
 def parse_arguments(argv):
-    default_dist_path = "./Netease_refreshed"
+    default_dist_path = "Netease_refreshed"
     default_playlist_id = "101562485"
 
     parser = argparse.ArgumentParser(
