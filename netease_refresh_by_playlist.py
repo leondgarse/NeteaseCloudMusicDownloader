@@ -62,7 +62,7 @@ def netease_refresh_by_songlist_single(song_id, source_path, dist_path, single_d
     return new_downloaded, song_not_found
 
 
-def netease_refresh_by_songlist(source_path, dist_path, song_list, single_download_func, WITH_SIZE_CHECK=False):
+def netease_refresh_by_songlist(source_path, dist_path, song_list, single_download_func, WITH_SIZE_CHECK=False, num_workers=10):
     if not os.path.exists(dist_path):
         os.mkdir(dist_path)
 
@@ -70,7 +70,7 @@ def netease_refresh_by_songlist(source_path, dist_path, song_list, single_downlo
     refresh_func = lambda song_id: netease_refresh_by_songlist_single(
         song_id, source_path, dist_path, single_download_func, WITH_SIZE_CHECK
     )
-    executor = ThreadPoolExecutor(max_workers=args.num_workers)
+    executor = ThreadPoolExecutor(max_workers=num_workers)
     rets = executor.map(refresh_func, song_list)
 
     new_downloaded = []
@@ -153,5 +153,5 @@ def parse_arguments(argv):
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
     netease_refresh_by_songlist(
-        args.source_path, args.dist_path, args.song_id_list, args.single_download_func, args.with_size_check
+        args.source_path, args.dist_path, args.song_id_list, args.single_download_func, args.with_size_check, args.num_workers
     )
