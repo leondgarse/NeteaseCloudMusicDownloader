@@ -11,8 +11,84 @@ import shutil
 from datetime import datetime
 from time import sleep
 from PIL import Image
+import pickle
 
 headers = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0"}
+
+
+class Requsets_with_login:
+    def __init__(self, user_data_bak_path=None):
+        if user_data_bak_path == None:
+            save_name = os.path.splitext(os.path.basename(__file__))[0] + "_cookie.pkl"
+            save_dir = os.path.dirname(os.path.abspath(__file__))
+            self.user_data_bak_path = os.path.join(save_dir, save_name)
+        else:
+            self.user_data_bak_path = user_data_bak_path
+
+        if os.path.exists(self.user_data_bak_path):
+            self.__reload_cookie__()
+        else:
+            self.__new_login__()
+
+    def __new_login__(self):
+        print(">>>> Required login first")
+        user_name = input("Netease user_name: ")
+        password = input("Netease password: ")
+        print(">>>> [Login info] user_name: {}, password: {}".format(user_name, password))
+        self.__request_login__(user_name, password)
+
+    def __request_login__(self, user_name, password):
+        from encrypt import encrypted_request
+        from hashlib import md5
+
+        session = requests.Session()
+        session.cookies.set("os", "pc", domain="music.163.com")
+        password_md5 = md5(password.encode("utf-8")).hexdigest()
+
+        if user_name.isdigit() and len(user_name) == 11:  # phone number
+            login_url = "http://music.163.com/weapi/login/cellphone"
+            params = dict(
+                phone=user_name,
+                password=password_md5,
+                countrycode="86",
+                rememberLogin="true",
+            )
+        else:
+            login_url = "http://music.163.com/weapi/login"
+            params = dict(
+                phone=user_name,
+                password=password_md5,
+                rememberLogin="true",
+            )
+        params = encrypted_request(params)
+
+        ret = session.post(login_url, data=params, headers=headers)
+        assert ret.ok and ret.json()["code"] == 200
+
+        print(">>>> Save user data to:", self.user_data_bak_path)
+        with open(self.user_data_bak_path, "wb") as ff:
+            pickle.dump({"user_name": user_name, "password": password, "cookies": session.cookies}, ff)
+
+        self.session = session
+
+    def __reload_cookie__(self):
+        import pickle
+
+        with open(self.user_data_bak_path, "rb") as ff:
+            user_data = pickle.load(ff)
+        cookies = user_data["cookies"]
+        if sum([ii.is_expired() for ii in cookies]) != 0:  # expired
+            print(">>>> user login data expired, login again:", {ii.name(): ii.is_expired() for ii in cookies})
+            self.__request_login__(user_data["user_name"], user_data["password"])
+        else:
+            self.session = requests.Session()
+            self.session.cookies = cookies
+
+    def __call__(self, url, method="post"):
+        if method == "post":
+            return self.session.post(url, headers=headers)
+        else:
+            return self.session.get(url, headers=headers)
 
 
 def detect_netease_music_name(song_id):
@@ -40,7 +116,7 @@ def detect_netease_music_name(song_id):
 
     song_info = {}
     song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ")
-    song_info["artist"] = ','.join([ii['name'] for ii in rr["songs"][0]["ar"]])
+    song_info["artist"] = ",".join([ii["name"] for ii in rr["songs"][0]["ar"]])
     song_info["album"] = rr["songs"][0]["al"]["name"]
     song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
     song_info["cover_image"] = rr["songs"][0]["al"]["picUrl"]
@@ -69,12 +145,10 @@ def netease_parse_playlist_2_list(playlist_id):
     url_playlist_base = "https://music.163.com/api/v6/playlist/detail?id={}"
     url_playlist = url_playlist_base.format(playlist_id)
 
-    resp = requests.get(url_playlist, headers=headers)
-    rr = json.loads(resp.text)
-    # play_list = rr["result"]["tracks"]
-    # play_list = rr["playlist"]["tracks"]
-    play_list = rr["playlist"]["trackIds"]
+    ret = Requsets_with_login()(url_playlist)
+    assert ret.ok and ret.json()["code"] == 200
 
+    play_list = ret.json()["playlist"]["trackIds"]
     for song_item in play_list:
         yield song_item["id"]
 
@@ -102,8 +176,6 @@ def netease_cached_queue_2_list():
 
 
 def netease_cached_queue_2_song_info():
-    import json
-    import requests
     from datetime import datetime
 
     cached_queue = os.path.expanduser("~/.cache/netease-cloud-music/StorageCache/webdata/file/queue")
@@ -114,7 +186,7 @@ def netease_cached_queue_2_song_info():
     for song_item in rr:
         song_info = {}
         song_info["title"] = song_item["track"]["name"].replace("\xa0", " ")
-        song_info["artist"] = ','.join([ii['name'] for ii in song_item["track"]["artists"]])
+        song_info["artist"] = ",".join([ii["name"] for ii in song_item["track"]["artists"]])
         song_info["album"] = song_item["track"]["album"]["name"]
         song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
         song_info["id"] = song_item["track"]["id"]
@@ -172,7 +244,7 @@ def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True,
             target_hh = max_size if hh > ww else int(max_size * hh / ww)
             dd = cc.resize((target_ww, target_hh))
             buf = io.BytesIO()
-            dd.save(buf, format='JPEG')
+            dd.save(buf, format="JPEG")
             tt.tag.images.set(3, buf.getvalue(), "image/jpeg", "album cover")
         tt.tag.save(encoding="utf8")
     except UnicodeDecodeError as err:

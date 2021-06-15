@@ -10,6 +10,8 @@ import other_downloader
 import encrypt
 from concurrent.futures import ThreadPoolExecutor
 
+session = netease_rename.Requsets_with_login().session
+
 
 def get_url_2_local_file(url, dist_name):
     if os.path.exists(dist_name):
@@ -19,7 +21,7 @@ def get_url_2_local_file(url, dist_name):
     if not os.path.isdir(dist_path):
         os.makedirs(dist_path, exist_ok=True)
 
-    download_contents = requests.get(url, headers=netease_rename.headers)
+    download_contents = session.get(url, headers=netease_rename.headers)
     if not download_contents.ok or download_contents.url.endswith("/404"):
         print(">>>> %d is returned in download, dist_name = %s" % (download_contents.status_code, dist_name))
         return None
@@ -36,7 +38,7 @@ def get_url_2_local_file(url, dist_name):
 
 
 def get_url_content_size(url):
-    to_download_size = len(requests.get(url, headers=netease_rename.headers).content)
+    to_download_size = len(session.get(url, headers=netease_rename.headers).content)
     print("To download size = %.2fM" % (to_download_size / 1024 / 1024))
     return to_download_size
 
@@ -52,7 +54,7 @@ def netease_download_single_bit_rate(song_id, dist_path=None, SIZE_ONLY=False):
     params = {"ids": [song_id], "br": 320000, "csrf_token": ""}
 
     data = encrypt.encrypted_request(params)
-    resp = requests.post(song_download_url, data=data, timeout=30, headers=netease_rename.headers)
+    resp = session.post(song_download_url, data=data, timeout=30, headers=netease_rename.headers)
     resp_json = resp.json()
     if resp_json["code"] == -460:
         print(">>>> Return with cheating in netease_download_single_bit_rate, maybe it is expired time limit, try again later")

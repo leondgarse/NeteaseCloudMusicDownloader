@@ -271,7 +271,7 @@
   # bb = [ii for ii in netease_rename.detect_netease_music_name_list(aa) if ii['title'] == '简爱']
   bb = dd[dd.artist == '孙燕姿']
   print(bb.shape)
-  # (15, 8)
+  # (13, 8)
 
   song_id = int(bb.song_id.iat[0])
   netease_download_playlist.netease_download_single_bit_rate(song_id=song_id, SIZE_ONLY=True)
@@ -280,14 +280,14 @@
   # 64634 1817458262
 
   print(dd.artist.value_counts().head(8))
-  # 孙燕姿                 15
+  # 孙燕姿                 13
   # 曹方                   7
-  # KOKIA                6
-  # 徳永英明                 6
-  # Aimer                5
-  # Rachael Yamagata     5
-  # Garou                4
+  # Aimer                6
+  # 徳永英明                 5
+  # KOKIA                5
   # 手嶌葵                  4
+  # Rachael Yamagata     4
+  # 陈粒                   3
   # Name: artist, dtype: int64
 
   # ss = dd.year.map(int)
@@ -313,9 +313,10 @@
   ff.plot(xticks=ff.index[::2], ax=ax)
   [plt.text(ii, ff[ii], int(ff[ii])) for ii in ff.index]
 
-  plt.grid(axis='x')
-  plt.tight_layout()
+  plt.grid()
   plt.legend(['101562485', '2540602413'])
+  plt.title("Year distribution in playlist")
+  plt.tight_layout()
   ```
   ![](year_plot.svg)
 ***
