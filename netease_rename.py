@@ -72,6 +72,7 @@ class Requsets_with_login:
         self.session = session
 
     def __reload_cookie__(self):
+        print(">>>> Load user data from:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "rb") as ff:
             user_data = pickle.load(ff)
         cookies = user_data["cookies"]

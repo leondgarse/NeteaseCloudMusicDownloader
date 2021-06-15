@@ -27,7 +27,7 @@
   - Python 版本
     ```sh
     $ python --version
-    # Python 3.7.3
+    # Python 3.8.5
     ```
   - **pip 安装包**
     ```shell
