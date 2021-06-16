@@ -207,15 +207,15 @@ def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
     return dist_name
 
 
-def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True, song_format="mp3", SAVE_COVER_IAMGE_SIZE=320):
+def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=True, song_format="mp3", SAVE_COVER_IAMGE_SIZE=320):
     if not os.path.exists(dist_path):
         os.mkdir(dist_path)
 
-    if not isinstance(song_id, dict):
-        song_info, rr = detect_netease_music_name(song_id)
-    else:
-        song_info = song_id
+    if isinstance(song_info, dict):
         song_id = song_info["id"]
+    else:
+        song_id = song_info
+        song_info, _ = detect_netease_music_name(song_id)
     try:
         tt = eyed3.load(file_path)
         tt.initTag(eyed3.id3.ID3_V2_3)
@@ -250,11 +250,11 @@ def netease_cache_rename_single(song_id, file_path, dist_path, KEEP_SOURCE=True,
         print("EyeD3 decode error: %s" % err)
 
     dist_name = generate_target_file_name(dist_path, song_info["title"], song_info["artist"], song_format)
-
-    if KEEP_SOURCE == True:
-        shutil.copyfile(file_path, dist_name)
-    else:
-        os.rename(file_path, dist_name)
+    if dist_name != file_path:
+        if KEEP_SOURCE == True:
+            shutil.copyfile(file_path, dist_name)
+        else:
+            os.rename(file_path, dist_name)
 
     return dist_name
 

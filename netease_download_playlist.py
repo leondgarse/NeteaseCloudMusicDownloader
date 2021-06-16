@@ -51,16 +51,16 @@ def get_url_content_size(url):
     return to_download_size
 
 
-def netease_download_single_bit_rate(song_id, dist_path=None, SIZE_ONLY=False):
+def netease_download_single_bit_rate(song_info, dist_path=None, SIZE_ONLY=False):
     global global_requests_func
     if global_requests_func is None:
         global_requests_func = netease_rename.Requsets_with_login()
 
-    if not isinstance(song_id, dict):
-        song_info = song_id
-    else:
-        song_info = song_id
+    if isinstance(song_info, dict):
         song_id = song_info["id"]
+    else:
+        song_id = song_info
+        song_info, _ = netease_rename.detect_netease_music_name(song_id)
 
     song_download_url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
     params = {"ids": [song_id], "br": 320000, "csrf_token": ""}
@@ -81,22 +81,22 @@ def netease_download_single_bit_rate(song_id, dist_path=None, SIZE_ONLY=False):
     if SIZE_ONLY == True:
         return get_url_content_size(download_url)
 
-    temp_download_path = os.path.join(dist_path, "{}-bite_rate-random_num.{}".format(song_id, song_format))
-    dist_name = get_url_2_local_file(download_url, temp_download_path)
+    dist_name = netease_rename.generate_target_file_name(dist_path, song_info["title"], song_info["artist"], song_format)
+    dist_name = get_url_2_local_file(download_url, dist_name)
     if dist_name and song_format == "mp3":
         dist_name = netease_rename.netease_cache_rename_single(
-            song_info, temp_download_path, dist_path, KEEP_SOURCE=False, song_format=song_format
+            song_info, dist_name, dist_path, KEEP_SOURCE=False, song_format=song_format
         )
         return dist_name
 
 
 # https://github.com/Binaryify/NeteaseCloudMusicApi/blob/master/module/song_url.js
-def netease_download_single_outer(song_id, dist_path=None, SIZE_ONLY=False):
-    if not isinstance(song_id, dict):
-        song_info = song_id
-    else:
-        song_info = song_id
+def netease_download_single_outer(song_info, dist_path=None, SIZE_ONLY=False):
+    if isinstance(song_info, dict):
         song_id = song_info["id"]
+    else:
+        song_id = song_info
+        song_info, _ = netease_rename.detect_netease_music_name(song_id)
 
     url_base = "http://music.163.com/song/media/outer/url?id={}.mp3"
     url = url_base.format(song_id)
@@ -104,17 +104,22 @@ def netease_download_single_outer(song_id, dist_path=None, SIZE_ONLY=False):
     if SIZE_ONLY == True:
         return get_url_content_size(url)
 
-    temp_download_path = os.path.join(dist_path, "{}-bite_rate-random_num.{}".format(song_id, "mp3"))
-    dist_name = get_url_2_local_file(url, temp_download_path)
+    dist_name = netease_rename.generate_target_file_name(dist_path, song_info["title"], song_info["artist"], "mp3")
+    dist_name = get_url_2_local_file(url, dist_name)
     if dist_name:
         dist_name = netease_rename.netease_cache_rename_single(
-            song_info, temp_download_path, dist_path, KEEP_SOURCE=False, song_format="mp3"
+            song_info, dist_name, dist_path, KEEP_SOURCE=False, song_format="mp3"
         )
         return dist_name
 
 
-def downloader_wrapper(single_download_func, song_id, dist_path):
-    song_info, _ = netease_rename.detect_netease_music_name(song_id)
+def downloader_wrapper(single_download_func, song_info, dist_path):
+    if isinstance(song_info, dict):
+        song_id = song_info["id"]
+    else:
+        song_id = song_info
+        song_info, _ = netease_rename.detect_netease_music_name(song_id)
+
     song_artist_ne = song_info["artist"]
     song_name_ne = song_info["title"]
     print(">>>> song_id = %s, song_name_ne = %s, song_artist_ne = %s" % (song_id, song_name_ne, song_artist_ne))

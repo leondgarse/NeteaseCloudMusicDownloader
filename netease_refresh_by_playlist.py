@@ -9,13 +9,13 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 
 
-def netease_refresh_by_songlist_single(song_id, source_path, dist_path, single_download_func, WITH_SIZE_CHECK=False):
-    # print(song_id)
-    if not isinstance(song_id, dict):
-        song_info, _ = netease_rename.detect_netease_music_name(song_id)
-    else:
-        song_info = song_id
+def netease_refresh_by_songlist_single(song_info, source_path, dist_path, single_download_func, WITH_SIZE_CHECK=False):
+    # print(song_info)
+    if isinstance(song_info, dict):
         song_id = song_info["id"]
+    else:
+        song_id = song_info
+        song_info, _ = netease_rename.detect_netease_music_name(song_id)
     source_path_file = netease_rename.generate_target_file_name(
         source_path, song_info["title"], song_info["artist"], song_format="mp3"
     )
@@ -55,7 +55,7 @@ def netease_refresh_by_songlist_single(song_id, source_path, dist_path, single_d
         print("Song not found, song_id = %s, title = %s, artist = %s" % (song_id, song_info["title"], song_info["artist"]))
         new_downloaded = False
         song_not_found = True
-    else:
+    elif temp_file_path == source_path_file:
         dist_path_file = netease_rename.netease_cache_rename_single(song_info, temp_file_path, dist_path, KEEP_SOURCE=False)
         print("Move %s to %s, song_id = %s" % (temp_file_path, dist_path_file, song_id))
 
