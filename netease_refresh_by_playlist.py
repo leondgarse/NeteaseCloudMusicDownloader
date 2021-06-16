@@ -113,20 +113,22 @@ def parse_arguments(argv):
             "All these steps will also update ID3 info and album cover images.\n"
             "Option <--with_size_check> will force checking file size, and keep the bigger one\n"
             "\n"
-            "default dist path: %s\n"
-            "default playlist id: %s" % (default_dist_path, default_playlist_id)
         ),
     )
     parser.add_argument("source_path", type=str, help="Source folder contains music files")
-    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading", default=10)
-    parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones", default=-1)
-    parser.add_argument("-p", "--playlist", type=str, help="Playlist id used to download", default=default_playlist_id)
+    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 10", default=10)
+    parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones, default -1", default=-1)
+    parser.add_argument(
+        "-p", "--playlist", type=str, help="Playlist id, default: " + default_playlist_id, default=default_playlist_id
+    )
     parser.add_argument("-a", "--album", type=str, help="Album id used to download", default=None)
     parser.add_argument("-Q", "--queue", action="store_true", help="Download song in cached queue file")
     parser.add_argument(
         "-S", "--song_id_list", nargs="*", type=str, help="Specify song id list to download. Format 1 2 3 or 1, 2, 3"
     )
-    parser.add_argument("-d", "--dist_path", type=str, help="Dist output path", default=default_dist_path)
+    parser.add_argument(
+        "-d", "--dist_path", type=str, help="Dist output path, default: " + default_dist_path, default=default_dist_path
+    )
     parser.add_argument("--with_size_check", action="store_true", help="Enable comparing source and downloaded file size")
     parser.add_argument("--outer", action="store_true", help="Download from netease default output url, DEFAULT one")
     parser.add_argument("--bitrate", action="store_true", help="Download with bitrate=320k from netease")
@@ -144,7 +146,7 @@ def parse_arguments(argv):
 
     args.song_id_list = list(args.song_id_list)
     if args.head != -1:
-        args.song_id_list = args.song_id_list[:args.head]
+        args.song_id_list = args.song_id_list[: args.head]
 
     if args.bitrate == True:
         args.single_download_func = netease_download_playlist.netease_download_single_bit_rate
