@@ -161,6 +161,7 @@
   - `-Q, --queue` 根据缓存的播放列表 `~/.cache/netease-cloud-music/StorageCache/webdata/file/queue` 下载，默认 `False`
   - `--song_id_list [SONG_ID_LIST [SONG_ID_LIST ...]]` 指定一个 song id list 下载，而不使用 playlist，格式可以是 `1 2 3` 或 `1, 2, 3`
   - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `10`
+  - `-H, --head` 只下载前 [NUM] 个
   - `--outer` 指定使用 outer url 方式下载，默认方式
   - `--bitrate` 指定使用 bitrate url 方式下载，可以指定 bitrate=320k，容易检测为 cheating
   - `--baidu_flac` 指定使用 Baidu flac 方式下载，可以下载 flac 格式的无损音乐，出错率高
@@ -239,12 +240,13 @@
   - `-p PLAYLIST, --playlist PLAYLIST` 播放列表 ID，默认 `101562485`
   - `-a ALBUM, --album ALBUM` 专辑 ID，默认 `None`
   - `-Q, --queue` 根据缓存的播放列表 `~/.cache/netease-cloud-music/StorageCache/webdata/file/queue` 下载，默认 `False`
+  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `10`
+  - `-H, --head` 只更新前 [NUM] 个
   - `--song_id_list [SONG_ID_LIST [SONG_ID_LIST ...]]` 指定一个 song id list 下载，而不使用 playlist，格式可以是 `1 2 3` 或 `1, 2, 3`
   - `-d DIST_PATH, --dist_path DIST_PATH` 输出路径，默认 `./Netease_refreshed`
   - `--with_size_check` 指定对比文件大小，如果下载的文件大小大于本地文件 500K，则保留下载的文件
   - `--outer` 指定使用 outer url 方式下载，默认方式
   - `--bitrate` 指定使用 bitrate url 方式下载，可以指定 bitrate=320k，容易检测为 cheating
-  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `10`
   - 示例
     ```shell
     ~/Downloads/netease/ -p 101562485 -d ~/Downloads/netease_refreshed
@@ -274,8 +276,8 @@
   # (13, 8)
 
   song_id = int(bb.song_id.iat[0])
-  netease_download_playlist.netease_download_single_bit_rate(song_id=song_id, SIZE_ONLY=True)
-  netease_download_playlist.netease_download_single_bit_rate(song_id=30431376, dist_path='./')
+  netease_download_playlist.netease_download_single_bit_rate(song_info=song_id, SIZE_ONLY=True)
+  netease_download_playlist.netease_download_single_bit_rate(song_info=30431376, dist_path='./')
   print(dd.song_id.min(), dd.song_id.max())
   # 64634 1817458262
 
