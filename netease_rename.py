@@ -31,7 +31,7 @@ class Requsets_with_login:
             self.__new_login__()
 
     def __new_login__(self):
-        print(">>>> Required login first")
+        print(">>>> Requires login first")
         user_name = input("Netease user_name: ")
         password = input("Netease password: ")
         print(">>>> [Login info] user_name: {}, password: {}".format(user_name, password))
@@ -81,13 +81,13 @@ class Requsets_with_login:
             self.__request_login__(user_data["user_name"], user_data["password"])
         else:
             self.session = requests.Session()
-            self.session.cookies = cookies
+            self.session.cookies.update(cookies)
 
-    def __call__(self, url, method="post"):
-        if method == "post":
-            return self.session.post(url, headers=headers)
-        else:
-            return self.session.get(url, headers=headers)
+    def get(self, url):
+        return self.session.get(url, headers=headers)
+
+    def post(self, url, data=None, timeout=30):
+        return self.session.post(url, data=data, timeout=timeout, headers=headers)
 
 
 def detect_netease_music_name(song_id):
@@ -144,7 +144,7 @@ def netease_parse_playlist_2_list(playlist_id):
     url_playlist_base = "https://music.163.com/api/v6/playlist/detail?id={}"
     url_playlist = url_playlist_base.format(playlist_id)
 
-    ret = Requsets_with_login()(url_playlist)
+    ret = Requsets_with_login().post(url_playlist)
     assert ret.ok and ret.json()["code"] == 200
 
     play_list = ret.json()["playlist"]["trackIds"]

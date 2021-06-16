@@ -66,7 +66,6 @@ def netease_refresh_by_songlist(source_path, dist_path, song_list, single_downlo
     if not os.path.exists(dist_path):
         os.mkdir(dist_path)
 
-    song_list = list(song_list)
     refresh_func = lambda song_id: netease_refresh_by_songlist_single(
         song_id, source_path, dist_path, single_download_func, WITH_SIZE_CHECK
     )
@@ -112,7 +111,7 @@ def parse_arguments(argv):
             "3. If it is in <source_path>, move it to <dist_path>\n"
             "4. If it is not in local, download it from Netease, then move to <dist_path>\n"
             "All these steps will also update ID3 info and album cover images.\n"
-            "Option <--with_size_check> will force check file size, and keep the bigger one\n"
+            "Option <--with_size_check> will force checking file size, and keep the bigger one\n"
             "\n"
             "default dist path: %s\n"
             "default playlist id: %s" % (default_dist_path, default_playlist_id)
@@ -120,6 +119,7 @@ def parse_arguments(argv):
     )
     parser.add_argument("source_path", type=str, help="Source folder contains music files")
     parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading", default=10)
+    parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones", default=-1)
     parser.add_argument("-p", "--playlist", type=str, help="Playlist id used to download", default=default_playlist_id)
     parser.add_argument("-a", "--album", type=str, help="Album id used to download", default=None)
     parser.add_argument("-Q", "--queue", action="store_true", help="Download song in cached queue file")
@@ -141,6 +141,10 @@ def parse_arguments(argv):
             args.song_id_list = netease_rename.netease_parse_playlist_2_list(args.playlist)
     else:
         args.song_id_list = [int(ss.replace(",", "")) for ss in args.song_id_list]
+
+    args.song_id_list = list(args.song_id_list)
+    if args.head != -1:
+        args.song_id_list = args.song_id_list[:args.head]
 
     if args.bitrate == True:
         args.single_download_func = netease_download_playlist.netease_download_single_bit_rate

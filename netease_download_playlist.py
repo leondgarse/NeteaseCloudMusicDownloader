@@ -4,16 +4,20 @@ import os
 import sys
 import argparse
 import json
-import requests
 import netease_rename
 import other_downloader
 import encrypt
 from concurrent.futures import ThreadPoolExecutor
 
-session = netease_rename.Requsets_with_login().session
+# global_requests_func = netease_rename.Requsets_with_login()
+global_requests_func = None
 
 
 def get_url_2_local_file(url, dist_name):
+    global global_requests_func
+    if global_requests_func is None:
+        global_requests_func = netease_rename.Requsets_with_login()
+
     if os.path.exists(dist_name):
         print("File %s exists, skip downloading" % (dist_name))
         return dist_name
@@ -21,7 +25,7 @@ def get_url_2_local_file(url, dist_name):
     if not os.path.isdir(dist_path):
         os.makedirs(dist_path, exist_ok=True)
 
-    download_contents = session.get(url, headers=netease_rename.headers)
+    download_contents = global_requests_func.get(url)
     if not download_contents.ok or download_contents.url.endswith("/404"):
         print(">>>> %d is returned in download, dist_name = %s" % (download_contents.status_code, dist_name))
         return None
@@ -38,12 +42,20 @@ def get_url_2_local_file(url, dist_name):
 
 
 def get_url_content_size(url):
-    to_download_size = len(session.get(url, headers=netease_rename.headers).content)
+    global global_requests_func
+    if global_requests_func is None:
+        global_requests_func = netease_rename.Requsets_with_login()
+
+    to_download_size = len(global_requests_func.get(url).content)
     print("To download size = %.2fM" % (to_download_size / 1024 / 1024))
     return to_download_size
 
 
 def netease_download_single_bit_rate(song_id, dist_path=None, SIZE_ONLY=False):
+    global global_requests_func
+    if global_requests_func is None:
+        global_requests_func = netease_rename.Requsets_with_login()
+
     if not isinstance(song_id, dict):
         song_info = song_id
     else:
@@ -54,7 +66,7 @@ def netease_download_single_bit_rate(song_id, dist_path=None, SIZE_ONLY=False):
     params = {"ids": [song_id], "br": 320000, "csrf_token": ""}
 
     data = encrypt.encrypted_request(params)
-    resp = session.post(song_download_url, data=data, timeout=30, headers=netease_rename.headers)
+    resp = global_requests_func.post(song_download_url, data=data, timeout=30)
     resp_json = resp.json()
     if resp_json["code"] == -460:
         print(">>>> Return with cheating in netease_download_single_bit_rate, maybe it is expired time limit, try again later")
