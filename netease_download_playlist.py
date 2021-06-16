@@ -27,7 +27,7 @@ def get_url_2_local_file(url, dist_name):
 
     download_contents = global_requests_func.get(url)
     if not download_contents.ok or download_contents.url.endswith("/404"):
-        print(">>>> %d is returned in download, dist_name = %s" % (download_contents.status_code, dist_name))
+        print(">>>> Fail to get download contents, dist_name = %s" % (dist_name))
         return None
 
     if len(download_contents.content) == 524288:
@@ -134,7 +134,6 @@ def downloader_wrapper(single_download_func, song_id, dist_path):
 
 
 def netease_download_list(song_list, dist_path, single_download_func=netease_download_single_bit_rate):
-    song_list = list(song_list)
     download_func = lambda song_id: single_download_func(song_id, dist_path)
 
     executor = ThreadPoolExecutor(max_workers=args.num_workers)
@@ -168,16 +167,15 @@ def parse_arguments(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Download Netease song by <playlist> ID\n"
-            "Also support specify a <song_id_list> or <album_id>to download\n"
-            "Also support download Baidu, QQ, Migu, Kugou source\n"
+            "Also supports downloading by a specified <song_id_list> or <album_id>\n"
+            "Also supports downloading from Baidu, QQ, Migu, Kugou source\n"
             "\n"
-            "default dist path: %s\n"
-            "default playlist id: %s" % (default_dist_path, default_playlist_id)
         ),
     )
-    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading", default=10)
-    parser.add_argument("-d", "--dist_path", type=str, help="Download output path", default=default_dist_path)
-    parser.add_argument("-p", "--playlist", type=str, help="Playlist id to download", default=default_playlist_id)
+    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 10", default=10)
+    parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones, default -1", default=-1)
+    parser.add_argument("-d", "--dist_path", type=str, help="Download output path, default: " + default_dist_path, default=default_dist_path)
+    parser.add_argument("-p", "--playlist", type=str, help="Playlist id to download, default: " + default_playlist_id, default=default_playlist_id)
     parser.add_argument("-a", "--album", type=str, help="Album id used to download", default=None)
     parser.add_argument("-Q", "--queue", action="store_true", help="Download song in cached queue file")
     parser.add_argument(
@@ -203,6 +201,10 @@ def parse_arguments(argv):
             args.song_id_list = netease_rename.netease_parse_playlist_2_list(args.playlist)
     else:
         args.song_id_list = [int(ss.replace(",", "")) for ss in args.song_id_list]
+
+    args.song_id_list = list(args.song_id_list)
+    if args.head != -1:
+        args.song_id_list = args.song_id_list[: args.head]
 
     if args.all:
         args.bitrate = True
