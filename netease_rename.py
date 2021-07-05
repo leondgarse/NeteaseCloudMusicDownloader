@@ -77,7 +77,7 @@ class Requsets_with_login:
             user_data = pickle.load(ff)
         cookies = user_data["cookies"]
         if sum([ii.is_expired() for ii in cookies]) != 0:  # expired
-            print(">>>> user login data expired, login again:", {ii.name(): ii.is_expired() for ii in cookies})
+            print(">>>> user login data expired, login again:", {ii.name: ii.is_expired() for ii in cookies})
             self.__request_login__(user_data["user_name"], user_data["password"])
         else:
             self.session = requests.Session()
