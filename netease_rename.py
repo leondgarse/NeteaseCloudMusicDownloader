@@ -156,7 +156,8 @@ def netease_get_album_detial(album_id):
     url_album_base = "http://music.163.com/api/album/{}"
     # url_album_base = "https://music.163.com/weapi/vipmall/albumproduct/detail?id={}"
     url_album = url_album_base.format(album_id)
-    resp = requests.get(url_album, headers=headers)
+    # resp = requests.get(url_album, headers=headers)
+    resp = Requsets_with_login().post(url_album)
     return resp.json()
 
 
