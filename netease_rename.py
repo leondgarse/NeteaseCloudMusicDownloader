@@ -120,7 +120,7 @@ def detect_netease_music_name(song_id):
         return song_info, rr
 
     song_info = {}
-    song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ")
+    song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ").replace("\"", "")
     song_info["artist"] = ",".join([ii["name"] for ii in rr["songs"][0]["ar"]])
     song_info["album"] = rr["songs"][0]["al"]["name"]
     song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
@@ -194,7 +194,7 @@ def netease_cached_queue_2_song_info():
             yield {"id": song_id, "title": str(song_id), "artist": "cloud_disk"}
         else:
             song_info = {}
-            song_info["title"] = song_item["track"]["name"].replace("\xa0", " ")
+            song_info["title"] = song_item["track"]["name"].replace("\xa0", " ").replace("\"", "")
             song_info["artist"] = ",".join([ii["name"] for ii in song_item["track"]["artists"]])
             song_info["album"] = song_item["track"]["album"]["name"]
             song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
