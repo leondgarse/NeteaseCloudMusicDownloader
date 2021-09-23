@@ -279,25 +279,25 @@
   netease_download_playlist.netease_download_single_bit_rate(song_info=song_id, SIZE_ONLY=True)
   netease_download_playlist.netease_download_single_bit_rate(song_info=30431376, dist_path='./')
   print(dd.song_id.min(), dd.song_id.max())
-  # 64634 1817458262
+  # 109998 1880474160
 
   print(dd.artist.value_counts().head(8))
   # 孙燕姿                 13
-  # 曹方                   7
-  # Aimer                6
+  # Aimer                7
+  # 曹方                   6
   # 徳永英明                 5
-  # KOKIA                5
-  # 手嶌葵                  4
   # Rachael Yamagata     4
-  # 陈粒                   3
+  # KOKIA                4
+  # Garou                3
+  # 手嶌葵                  3
   # Name: artist, dtype: int64
 
   # ss = dd.year.map(int)
-  ss = dd.year.astype(int)
+  ss = dd.year.dropna().astype(int)
   ymin = ss.min()
   ymax = ss.max()
   print(ymin, ymax)
-  # 1981 2021
+  # 1985 2021
 
   import matplotlib.pyplot as plt
   ax = plt.axes()
@@ -309,13 +309,13 @@
   # Add another
   bb = netease_rename.netease_parse_playlist_2_list(playlist_id=2540602413)
   ee = pd.DataFrame(netease_rename.detect_netease_music_name_list(bb)).drop(columns='cover_image')
-  tt = ee.year.astype(int)
+  tt = ee.year.dropna().astype(int)
   ff = tt.value_counts().sort_index()
   ff = ff.reindex(range(ymin, ymax + 1)).fillna(0)
   ff.plot(xticks=ff.index[::2], ax=ax)
   [plt.text(ii, ff[ii], int(ff[ii])) for ii in ff.index]
 
-  plt.grid()
+  plt.grid(True)
   plt.legend(['101562485', '2540602413'])
   plt.title("Year distribution in playlist")
   plt.tight_layout()

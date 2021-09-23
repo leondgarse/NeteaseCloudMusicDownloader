@@ -72,7 +72,7 @@ class Requsets_with_login:
         self.session = session
 
     def __reload_cookie__(self):
-        print(">>>> Load user data from:", self.user_data_bak_path)
+        # print(">>>> Load user data from:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "rb") as ff:
             user_data = pickle.load(ff)
         cookies = user_data["cookies"]
@@ -112,6 +112,12 @@ def detect_netease_music_name(song_id):
     if len(rr.get("songs", "")) == 0:
         print(">>>> returned 200 OK, but song info is empty, remove it and try again, song_id = %s" % (song_id))
         exit(1)
+
+    # print(">>>> song_id:", song_id)
+    if rr["songs"][0]["name"] is None:
+        # print(">>>> Private cloud disk one.")
+        song_info = {"id": song_id, "title": str(song_id), "artist": "none"}
+        return song_info, rr
 
     song_info = {}
     song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ")
@@ -184,20 +190,23 @@ def netease_cached_queue_2_song_info():
     with open(cached_queue, "r") as ff:
         rr = json.load(ff)
     for song_item in rr:
-        song_info = {}
-        song_info["title"] = song_item["track"]["name"].replace("\xa0", " ")
-        song_info["artist"] = ",".join([ii["name"] for ii in song_item["track"]["artists"]])
-        song_info["album"] = song_item["track"]["album"]["name"]
-        song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
-        song_info["id"] = song_item["track"]["id"]
-        song_info["cover_image"] = song_item["track"]["album"]["picUrl"]
-        song_info["url"] = song_item.get("lastPlayInfo", {}).get("retJson", {}).get("url", None)
+        if song_item["track"]["name"] is None:  # Private cloud disk one
+            yield {"id": song_id, "title": str(song_id), "artist": "cloud_disk"}
+        else:
+            song_info = {}
+            song_info["title"] = song_item["track"]["name"].replace("\xa0", " ")
+            song_info["artist"] = ",".join([ii["name"] for ii in song_item["track"]["artists"]])
+            song_info["album"] = song_item["track"]["album"]["name"]
+            song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
+            song_info["id"] = song_item["track"]["id"]
+            song_info["cover_image"] = song_item["track"]["album"]["picUrl"]
+            song_info["url"] = song_item.get("lastPlayInfo", {}).get("retJson", {}).get("url", None)
 
-        album_detail = netease_get_album_detial(song_item["track"]["album"]["id"])
-        # print(url_album, album_detail["code"])
-        song_info["year"] = str(datetime.fromtimestamp(int(album_detail["album"]["publishTime"]) / 1000).year)
-        song_info["album_artist"] = album_detail["album"]["artist"]["name"]
-        yield song_info
+            album_detail = netease_get_album_detial(song_item["track"]["album"]["id"])
+            # print(url_album, album_detail["code"])
+            song_info["year"] = str(datetime.fromtimestamp(int(album_detail["album"]["publishTime"]) / 1000).year)
+            song_info["album_artist"] = album_detail["album"]["artist"]["name"]
+            yield song_info
 
 
 def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
@@ -222,16 +231,16 @@ def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=Tru
         tt.initTag(eyed3.id3.ID3_V2_3)
         tt.tag.title = song_info["title"]
         tt.tag.artist = song_info["artist"]
-        tt.tag.album = song_info["album"]
-        tt.tag.album_artist = song_info["album_artist"]
-        tt.tag.track_num = tuple(song_info["track_num"])
-        tt.tag.recording_date = eyed3.core.Date.parse(song_info["year"])
+        tt.tag.album = song_info.get("album", "none")
+        tt.tag.album_artist = song_info.get("album_artist", "none")
+        tt.tag.track_num = tuple(song_info.get("track_num", (0, 0)))
+        tt.tag.recording_date = eyed3.core.Date.parse(song_info.get("year", "1970"))
         print(
             "song_id = %s, tt.tag {title = %s, artist = %s, album = %s, album_artist = %s, track_num = %s, year = %s}"
-            % (song_id, tt.tag.title, tt.tag.artist, tt.tag.album, tt.tag.album_artist, tt.tag.track_num, song_info["year"])
+            % (song_id, tt.tag.title, tt.tag.artist, tt.tag.album, tt.tag.album_artist, tt.tag.track_num, song_info.get("year", "1970"))
         )
 
-        if SAVE_COVER_IAMGE_SIZE > 0:
+        if SAVE_COVER_IAMGE_SIZE > 0 and "cover_image" in song_info:
             pic_url = song_info["cover_image"]
             resp = requests.get(pic_url)
             image_data = resp.content
