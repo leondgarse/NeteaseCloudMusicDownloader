@@ -14,6 +14,7 @@ from PIL import Image
 import pickle
 
 headers = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0"}
+global_requests_func = None
 
 
 class Requsets_with_login:
@@ -72,7 +73,7 @@ class Requsets_with_login:
         self.session = session
 
     def __reload_cookie__(self):
-        # print(">>>> Load user data from:", self.user_data_bak_path)
+        print(">>>> Load user data from:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "rb") as ff:
             user_data = pickle.load(ff)
         cookies = user_data["cookies"]
@@ -120,7 +121,7 @@ def detect_netease_music_name(song_id):
         return song_info, rr
 
     song_info = {}
-    song_info["title"] = rr["songs"][0]["name"].replace("\xa0", " ").replace("\"", "")
+    song_info["title"] = rr["songs"][0]["name"]
     song_info["artist"] = ",".join([ii["name"] for ii in rr["songs"][0]["ar"]])
     song_info["album"] = rr["songs"][0]["al"]["name"]
     song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
@@ -145,12 +146,16 @@ def detect_netease_music_name_list(song_list):
 
 
 def netease_parse_playlist_2_list(playlist_id):
+    global global_requests_func
+    if global_requests_func is None:
+        global_requests_func = Requsets_with_login()
+
     # url_playlist_base = "http://music.163.com/api/playlist/detail?id={}"
     # url_playlist_base = "http://localhost:3000/playlist/detail?id={}"
     url_playlist_base = "https://music.163.com/api/v6/playlist/detail?id={}"
     url_playlist = url_playlist_base.format(playlist_id)
 
-    ret = Requsets_with_login().post(url_playlist)
+    ret = global_requests_func.post(url_playlist)
     assert ret.ok and ret.json()["code"] == 200
 
     play_list = ret.json()["playlist"]["trackIds"]
@@ -159,11 +164,15 @@ def netease_parse_playlist_2_list(playlist_id):
 
 
 def netease_get_album_detial(album_id):
+    global global_requests_func
+    if global_requests_func is None:
+        global_requests_func = Requsets_with_login()
+
     url_album_base = "http://music.163.com/api/album/{}"
     # url_album_base = "https://music.163.com/weapi/vipmall/albumproduct/detail?id={}"
     url_album = url_album_base.format(album_id)
     # resp = requests.get(url_album, headers=headers)
-    resp = Requsets_with_login().post(url_album)
+    resp = global_requests_func.post(url_album)
     return resp.json()
 
 
@@ -194,7 +203,7 @@ def netease_cached_queue_2_song_info():
             yield {"id": song_id, "title": str(song_id), "artist": "cloud_disk"}
         else:
             song_info = {}
-            song_info["title"] = song_item["track"]["name"].replace("\xa0", " ").replace("\"", "")
+            song_info["title"] = song_item["track"]["name"]
             song_info["artist"] = ",".join([ii["name"] for ii in song_item["track"]["artists"]])
             song_info["album"] = song_item["track"]["album"]["name"]
             song_info["track_num"] = (int(song_item["track"]["position"]), int(song_item["track"]["cd"]))
@@ -210,8 +219,8 @@ def netease_cached_queue_2_song_info():
 
 
 def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
-    aa = artist.replace(os.sep, " ").replace(":", " ").replace("?", " ").strip()
-    tt = title.replace(os.sep, " ").replace(":", " ").replace("?", " ").strip()
+    aa = artist.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("\"", "").strip()
+    tt = title.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("\"", "").replace("\xa0", " ").strip()
     dist_name = os.path.join(dist_path, "%s - %s" % (aa, tt)) + "." + song_format
 
     return dist_name
