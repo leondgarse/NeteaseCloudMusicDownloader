@@ -44,10 +44,11 @@ class Requsets_with_login:
 
         session = requests.Session()
         session.cookies.set("os", "pc", domain="music.163.com")
+        session.cookies.set("appver", "2.9.7", domain="music.163.com")
         password_md5 = md5(password.encode("utf-8")).hexdigest()
 
         if user_name.isdigit() and len(user_name) == 11:  # phone number
-            login_url = "http://music.163.com/weapi/login/cellphone"
+            login_url = "http://music.163.com/api/login/cellphone"
             params = dict(
                 phone=user_name,
                 password=password_md5,
@@ -61,9 +62,11 @@ class Requsets_with_login:
                 password=password_md5,
                 rememberLogin="true",
             )
-        params = encrypted_request(params)
+        # params = encrypted_request(params)
 
         ret = session.post(login_url, data=params, headers=headers)
+        if not (ret.ok and ret.json()["code"] == 200):
+            print("[Error] ret:", ret.json())
         assert ret.ok and ret.json()["code"] == 200
 
         print(">>>> Save user data to:", self.user_data_bak_path)
