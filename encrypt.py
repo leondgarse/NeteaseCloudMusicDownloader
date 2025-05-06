@@ -4,7 +4,7 @@ import os
 import base64
 import json
 import binascii
-from Crypto.Cipher import AES
+from Cryptodome.Cipher import AES
 
 # Encrypt key
 MODULUS = (

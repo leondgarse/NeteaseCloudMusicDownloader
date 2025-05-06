@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
-import requests
-import json
-import io
 import os
+import io
 import sys
+import json
+import random
+import string
+import requests
 import argparse
 import eyed3
 import shutil
@@ -13,7 +15,15 @@ from time import sleep
 from PIL import Image
 import pickle
 
-headers = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0"}
+headers = {
+    'Accept': '*/*',
+    'Host': 'music.163.com',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Referer': 'http://music.163.com',
+    'Cookie': 'appver=2.0.2; _ntes_nuid={}; NMTID={}'.format(
+        ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32)),
+        ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32)))
+}
 global_requests_func = None
 
 
@@ -27,16 +37,16 @@ class Requsets_with_login:
             self.user_data_bak_path = user_data_bak_path
 
         if os.path.exists(self.user_data_bak_path):
-            self.__reload_cookie__()
+            self.session = self.__reload_cookie__()
         else:
-            self.__new_login__()
+            self.session = self.__new_login__()
 
     def __new_login__(self):
         print(">>>> Requires login first")
         user_name = input("Netease user_name: ")
         password = input("Netease password: ")
         print(">>>> [Login info] user_name: {}, password: {}".format(user_name, password))
-        self.__request_login__(user_name, password)
+        return self.__request_login__(user_name, password)
 
     def __request_login__(self, user_name, password):
         from encrypt import encrypted_request
@@ -65,27 +75,33 @@ class Requsets_with_login:
         # params = encrypted_request(params)
 
         ret = session.post(login_url, data=params, headers=headers)
+        data = {"user_name": user_name, "password": password}
         if not (ret.ok and ret.json()["code"] == 200):
-            print("[Error] ret:", ret.json())
-        assert ret.ok and ret.json()["code"] == 200
-
+            print(">>>> Error for login in, will go on without login")
+        else:
+            print(">>>> Login successfully!")
+            data.update({"cookies": session.cookies})
         print(">>>> Save user data to:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "wb") as ff:
-            pickle.dump({"user_name": user_name, "password": password, "cookies": session.cookies}, ff)
-
-        self.session = session
+            pickle.dump(data, ff)
+        return session
 
     def __reload_cookie__(self):
         print(">>>> Load user data from:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "rb") as ff:
             user_data = pickle.load(ff)
-        cookies = user_data["cookies"]
-        if sum([ii.is_expired() for ii in cookies]) != 0:  # expired
+        cookies = user_data.get("cookies", [])
+        if len(cookies) == 0:
+            print(">>>> Empty cookies due to previous login failure, will skip login")
+            session = requests.Session()
+            session.cookies.set("os", "pc", domain="music.163.com")
+        elif sum([ii.is_expired() for ii in cookies]) != 0:  # expired
             print(">>>> user login data expired, login again:", {ii.name: ii.is_expired() for ii in cookies})
-            self.__request_login__(user_data["user_name"], user_data["password"])
+            session = self.__request_login__(user_data["user_name"], user_data["password"])
         else:
-            self.session = requests.Session()
-            self.session.cookies.update(cookies)
+            session = requests.Session()
+            session.cookies.update(cookies)
+        return session
 
     def get(self, url):
         return self.session.get(url, headers=headers)
@@ -136,8 +152,7 @@ def detect_netease_music_name(song_id):
     if publish_time == 0:
         publish_time = int(album_detail["album"]["publishTime"])
     song_info["year"] = str(datetime.fromtimestamp(publish_time / 1000).year)
-    song_info["album_artist"] = album_detail["album"]["artist"]["name"]
-
+    song_info["album_artist"] = album_detail["album"]["artist"].get("name", song_info["artist"])
     return song_info, rr
 
 
@@ -175,8 +190,12 @@ def netease_get_album_detial(album_id):
     # url_album_base = "https://music.163.com/weapi/vipmall/albumproduct/detail?id={}"
     url_album = url_album_base.format(album_id)
     # resp = requests.get(url_album, headers=headers)
-    resp = global_requests_func.post(url_album)
-    return resp.json()
+    resp = global_requests_func.get(url_album).json()
+
+    if resp["code"] != 200 or "album" not in resp:
+        print(">>>> ERROR: album_detail empty for album id: {}".format(album_id))
+        resp = {"album": {"publishTime": datetime.now().timestamp() * 1000, "artist": {}, "songs": []}}
+    return resp
 
 
 def netease_parse_album_2_list(album_id):
@@ -217,7 +236,7 @@ def netease_cached_queue_2_song_info():
             album_detail = netease_get_album_detial(song_item["track"]["album"]["id"])
             # print(url_album, album_detail["code"])
             song_info["year"] = str(datetime.fromtimestamp(int(album_detail["album"]["publishTime"]) / 1000).year)
-            song_info["album_artist"] = album_detail["album"]["artist"]["name"]
+            song_info["album_artist"] = album_detail["album"]["artist"].get("name", song_info["artist"])
             yield song_info
 
 
