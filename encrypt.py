@@ -30,7 +30,7 @@ def encrypted_request(text):
 def aes_encrypt(text, sec_key):
     pad = 16 - len(text) % 16
     text = text + chr(pad) * pad
-    encryptor = AES.new(sec_key, 2, b"0102030405060708")
+    encryptor = AES.new(sec_key, AES.MODE_CBC, b"0102030405060708")
     cipher_text = encryptor.encrypt(text.encode())
     cipher_text = base64.b64encode(cipher_text).decode("utf-8")
     return cipher_text

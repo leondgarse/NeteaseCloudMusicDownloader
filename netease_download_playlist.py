@@ -2,8 +2,9 @@
 
 import os
 import sys
-import argparse
 import json
+import requests
+import argparse
 import netease_rename
 import other_downloader
 import encrypt
@@ -14,10 +15,6 @@ global_requests_func = None
 
 
 def get_url_2_local_file(url, dist_name):
-    global global_requests_func
-    if global_requests_func is None:
-        global_requests_func = netease_rename.Requsets_with_login()
-
     if os.path.exists(dist_name):
         print("File %s exists, skip downloading" % (dist_name))
         return dist_name
@@ -25,7 +22,7 @@ def get_url_2_local_file(url, dist_name):
     if not os.path.isdir(dist_path):
         os.makedirs(dist_path, exist_ok=True)
 
-    download_contents = global_requests_func.get(url)
+    download_contents = requests.get(url)
     if not download_contents.ok or download_contents.url.endswith("/404"):
         print(">>>> Fail to get download contents, dist_name = %s" % (dist_name))
         return None

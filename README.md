@@ -273,23 +273,23 @@
   # bb = [ii for ii in netease_rename.detect_netease_music_name_list(aa) if ii['title'] == '简爱']
   bb = dd[dd.artist == '孙燕姿']
   print(bb.shape)
-  # (13, 8)
+  # (14, 8)
 
-  song_id = int(bb.song_id.iat[0])
+  song_id = int(bb.song_id.iat[4])
   netease_download_playlist.netease_download_single_bit_rate(song_info=song_id, SIZE_ONLY=True)
-  netease_download_playlist.netease_download_single_bit_rate(song_info=30431376, dist_path='./')
+  netease_download_playlist.netease_download_single_bit_rate(song_info=1361193752, dist_path='./')
   print(dd.song_id.min(), dd.song_id.max())
-  # 109998 1880474160
+  # 64634 2132590778
 
   print(dd.artist.value_counts().head(8))
-  # 孙燕姿                 13
-  # Aimer                7
-  # 曹方                   6
+  # 孙燕姿                 14
+  # Aimer                9
+  # 曹方                   7
   # 徳永英明                 5
+  # Mabanua              5
+  # KOKIA                5
   # Rachael Yamagata     4
-  # KOKIA                4
-  # Garou                3
-  # 手嶌葵                  3
+  # 林忆莲                  4
   # Name: artist, dtype: int64
 
   # ss = dd.year.map(int)
@@ -297,9 +297,10 @@
   ymin = ss.min()
   ymax = ss.max()
   print(ymin, ymax)
-  # 1985 2021
+  # 1982 2025
 
   import matplotlib.pyplot as plt
+  plt.figure(figsize=[12, 4])
   ax = plt.axes()
   cc = ss.value_counts().sort_index()
   cc = cc.reindex(range(ymin, ymax + 1)).fillna(0)
@@ -319,6 +320,7 @@
   plt.legend(['101562485', '2540602413'])
   plt.title("Year distribution in playlist")
   plt.tight_layout()
+  plt.savefig('year_plot.svg')
   ```
   ![](year_plot.svg)
 ***
