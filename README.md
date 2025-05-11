@@ -81,25 +81,28 @@
     'Paris Brune - Mustang cabriolet.mp3'
     ```
 ## Windows Cache decode
-  - `uc` cache 实际文件格式可能是 AAC，需要转码，可以通过 [Github BtbN/FFmpeg-Builds/releases](https://github.com/BtbN/FFmpeg-Builds/releases) 下载并解压 `ffmpeg`
+  - 缓存位于 `C:\Users\Administrator\AppData\Local\NetEase\CloudMusic\Cache\Cache`
+  - `uc` cache 实际文件格式可能是 AAC，需要转码
     ```sh
     $ ./bin/ffmpeg -i xxx.mp3 -c:a copy -id3v2_version 3 -write_id3v1 1 yyy.mp3
-    Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '1160377-320-74105b37be18fc325f3effbad46ddbbe.mp3':
-      Metadata:
-        major_brand     : M4A
-        minor_version   : 512
-        compatible_brands: M4A isomiso2
-        encoder         : Lavf58.76.100
-      Duration: 00:04:38.80, start: 0.000000, bitrate: 257 kb/s
-      Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 256 kb/s (default)
-        Metadata:
-          handler_name    : SoundHandler
-          vendor_id       : [0][0][0][0]
+    # ...
+    #     major_brand     : M4A
+    # ...
     ```
-  - 缓存位于 `C:\Users\Administrator\AppData\Local\NetEase\CloudMusic\Cache\Cache`，将其复制到 `ffmpeg` 下的 `Cache`
-  - `uc` 文件解码，解码后文件依然位于 `Cache` 下: `python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s Cache`
-  - 解码 `mkdir -p fixed_Cache && ls Cache/*.mp3 | xargs -I {} ./bin/ffmpeg.exe -i {} -c:a libmp3lame -q:a 0 -id3v2_version 3 -write_id3v1 1 fixed_{}`，
-  - 转码后再重命名一次 `python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s fixed_Cache -d fixed_output`
+    通过 [Github BtbN/FFmpeg-Builds/releases](https://github.com/BtbN/FFmpeg-Builds/releases) 下载并解压 `ffmpeg`
+  - 将缓存文件复制到 `ffmpeg` 下的 `Cache`
+  - `uc` 文件解码成 mp3
+    ```sh
+    python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s Cache
+    ```
+  - FFmpeg 解码
+    ```sh
+    mkdir -p fixed_Cache && ls Cache/*.mp3 | xargs -I {} ./bin/ffmpeg.exe -i {} -c:a libmp3lame -q:a 0 -id3v2_version 3 -write_id3v1 1 fixed_{}
+    ```
+  - 再重命名一次
+    ```sh
+    python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s fixed_Cache -d fixed_output
+    ```
 ## 参数
   - `-h, --help` 帮助信息
   - `-d DIST_PATH, --dist_path DIST_PATH` 输出路径，默认 `./output_music`
