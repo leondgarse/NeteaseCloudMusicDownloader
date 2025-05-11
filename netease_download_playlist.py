@@ -174,7 +174,7 @@ def parse_arguments(argv):
             "\n"
         ),
     )
-    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 10", default=10)
+    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 5", default=5)
     parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones, default -1", default=-1)
     parser.add_argument("-d", "--dist_path", type=str, help="Download output path, default: " + default_dist_path, default=default_dist_path)
     parser.add_argument("-p", "--playlist", type=str, help="Playlist id to download, default: " + default_playlist_id, default=default_playlist_id)

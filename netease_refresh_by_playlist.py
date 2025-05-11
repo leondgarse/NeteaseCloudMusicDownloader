@@ -23,12 +23,29 @@ def netease_refresh_by_songlist_single(song_info, source_path, dist_path, single
         dist_path, song_info["title"], song_info["artist"], song_format="mp3"
     )
 
+    # Try finding if other matches by song name
+    song_name, song_format = os.path.splitext(os.path.basename(source_path_file).split(" - ")[-1])
+    if not os.path.exists(source_path_file):
+        source_path_file = os.path.join(source_path, f"{song_name}.{song_format}")
+    if not os.path.exists(source_path_file):
+        source_song_candidates = [ii for ii in os.listdir(source_path) if song_name in ii]
+        if len(source_song_candidates) > 1:
+            print(f">>>> Found multi {source_song_candidates}, will use the shortest one")
+            source_song_candidate = min(source_song_candidates, key=lambda xx: len(xx))
+            source_path_file = os.path.join(source_path, source_song_candidate)
+        elif len(source_song_candidates) == 1:
+            source_song_candidate = source_song_candidates[0]
+            source_path_file = os.path.join(source_path, source_song_candidate)
+
     new_downloaded = False
     song_not_found = False
     if os.path.exists(dist_path_file):
         print("Dist file exists: %s, song_id = %s" % (dist_path_file, song_id))
         # temp_file_path = dist_path_file
         return new_downloaded, song_not_found
+    elif os.path.exists(source_path_file) and WITH_SIZE_CHECK == False:
+        print("Source file exists: %s, song_id = %s" % (source_path_file, song_id))
+        temp_file_path = source_path_file
     elif os.path.exists(source_path_file) and WITH_SIZE_CHECK == False:
         print("Source file exists: %s, song_id = %s" % (source_path_file, song_id))
         temp_file_path = source_path_file
@@ -74,7 +91,9 @@ def netease_refresh_by_songlist(source_path, dist_path, song_list, single_downlo
 
     new_downloaded = []
     song_not_found = []
-    for ii, song_id in zip(rets, song_list):
+    total = len(song_list)
+    for cur_id, (ii, song_id) in enumerate(zip(rets, song_list)):
+        print(f">>>> processing [{cur_id}/{total}]")
         if ii[0] == True:
             new_downloaded.append(song_id)
         elif ii[1] == True:
@@ -90,11 +109,12 @@ def netease_refresh_by_songlist(source_path, dist_path, song_list, single_downlo
     print("Song not found, size = %d:" % len(song_not_found))
     if len(song_not_found) != 0 and not isinstance(song_not_found[0], dict):
         song_not_found = netease_rename.detect_netease_music_name_list(song_not_found)
+    song_not_found_ids = []
     for ss in song_not_found:
-        print("    %s: %s - %s" % (ss["id"], ss["artist"], ss["title"]))
+        print(f'    {ss["id"]}: {ss["artist"]} - {ss["title"]}')
+        song_not_found_ids.append(ss["id"])
     print()
-    song_not_found_ids = [ss["id"] for ss in song_not_found]
-    print("Song not found id: %s" % (song_not_found_ids))
+    print(f"Song not found id: {song_not_found_ids}", )
     return song_not_found_ids
 
 
@@ -116,8 +136,9 @@ def parse_arguments(argv):
         ),
     )
     parser.add_argument("source_path", type=str, help="Source folder contains music files")
-    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 10", default=10)
+    parser.add_argument("-n", "--num_workers", type=int, help="Thread number for downloading, default 5", default=5)
     parser.add_argument("-H", "--head", type=int, help="Update only the head [NUM] ones, default -1", default=-1)
+    parser.add_argument("-s", "--skip", type=int, help="Update skipping the head [NUM] ones, default 0", default=0)
     parser.add_argument(
         "-p", "--playlist", type=str, help="Playlist id, default: " + default_playlist_id, default=default_playlist_id
     )
@@ -146,7 +167,7 @@ def parse_arguments(argv):
 
     args.song_id_list = list(args.song_id_list)
     if args.head != -1:
-        args.song_id_list = args.song_id_list[: args.head]
+        args.song_id_list = args.song_id_list[args.skip: args.head]
 
     if args.bitrate == True:
         args.single_download_func = netease_download_playlist.netease_download_single_bit_rate

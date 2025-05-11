@@ -36,12 +36,22 @@ class Requsets_with_login:
         else:
             self.user_data_bak_path = user_data_bak_path
 
-        if os.path.exists(self.user_data_bak_path):
+        if True:
+            print(">>>> Login currenly not working, skip...")
+            self.session = self.__default_seesion__()
+        elif os.path.exists(self.user_data_bak_path):
             self.session = self.__reload_cookie__()
         else:
             self.session = self.__new_login__()
 
+    def __default_seesion__(self):
+        session = requests.Session()
+        session.cookies.set("os", "pc", domain="music.163.com")
+        session.cookies.set("appver", "2.9.7", domain="music.163.com")
+        return session
+
     def __new_login__(self):
+        print(">>>> Requires login first")
         print(">>>> Requires login first")
         user_name = input("Netease user_name: ")
         password = input("Netease password: ")
@@ -52,9 +62,7 @@ class Requsets_with_login:
         from encrypt import encrypted_request
         from hashlib import md5
 
-        session = requests.Session()
-        session.cookies.set("os", "pc", domain="music.163.com")
-        session.cookies.set("appver", "2.9.7", domain="music.163.com")
+        session = self.__default_seesion__()
         password_md5 = md5(password.encode("utf-8")).hexdigest()
 
         if user_name.isdigit() and len(user_name) == 11:  # phone number
@@ -93,8 +101,7 @@ class Requsets_with_login:
         cookies = user_data.get("cookies", [])
         if len(cookies) == 0:
             print(">>>> Empty cookies due to previous login failure, will skip login")
-            session = requests.Session()
-            session.cookies.set("os", "pc", domain="music.163.com")
+            session = self.__default_seesion__()
         elif sum([ii.is_expired() for ii in cookies]) != 0:  # expired
             print(">>>> user login data expired, login again:", {ii.name: ii.is_expired() for ii in cookies})
             session = self.__request_login__(user_data["user_name"], user_data["password"])
@@ -241,16 +248,41 @@ def netease_cached_queue_2_song_info():
 
 
 def generate_target_file_name(dist_path, title, artist, song_format="mp3"):
-    aa = artist.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("\"", "").strip()
-    tt = title.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("\"", "").replace("\xa0", " ").strip()
+    aa = artist.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("!", " ").replace("\"", "").strip()
+    tt = title.replace(os.sep, " ").replace(":", " ").replace("?", " ").replace("!", " ").replace("\"", "").replace("\xa0", " ").strip()
     dist_name = os.path.join(dist_path, "%s - %s" % (aa, tt)) + "." + song_format
 
     return dist_name
 
 
+def download_image(pic_url, SAVE_COVER_IAMGE_SIZE=320):
+    success = False
+    while not success:
+        try:
+            resp = requests.get(pic_url)
+            image_data = resp.content
+            cc = Image.open(io.BytesIO(image_data))
+            if cc.mode != "RGB":
+                cc = cc.convert("RGB")
+            ww, hh = cc.size
+            max_size = min([max([ww, hh]), SAVE_COVER_IAMGE_SIZE])
+            target_ww = max_size if ww > hh else int(max_size * ww / hh)
+            target_hh = max_size if hh > ww else int(max_size * hh / ww)
+            dd = cc.resize((target_ww, target_hh))
+
+            success = True
+        except:
+            print(f">>>> Image decode error, try again... pic_url={pic_url}")
+            sleep(1)
+
+    buf = io.BytesIO()
+    dd.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=True, song_format="mp3", SAVE_COVER_IAMGE_SIZE=320):
     if not os.path.exists(dist_path):
-        os.mkdir(dist_path)
+        os.makedirs(dist_path, exist_ok=True)
 
     if isinstance(song_info, dict):
         song_id = song_info["id"]
@@ -259,6 +291,15 @@ def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=Tru
         song_info, _ = detect_netease_music_name(song_id)
     try:
         tt = eyed3.load(file_path)
+        # if tt is None:
+        #     from mutagen.id3 import ID3
+        #
+        #     audio = ID3()
+        #     audio.save(file_path, v2_version=3)
+        #     tt = eyed3.load(file_path)
+        #     tt.tag.clear()
+        #     tt.tag.save()
+
         tt.initTag(eyed3.id3.ID3_V2_3)
         tt.tag.title = song_info["title"]
         tt.tag.artist = song_info["artist"]
@@ -272,23 +313,13 @@ def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=Tru
         )
 
         if SAVE_COVER_IAMGE_SIZE > 0 and "cover_image" in song_info:
-            pic_url = song_info["cover_image"]
-            resp = requests.get(pic_url)
-            image_data = resp.content
-            cc = Image.open(io.BytesIO(image_data))
-            if cc.mode != "RGB":
-                cc = cc.convert("RGB")
-            ww, hh = cc.size
-            max_size = min([max([ww, hh]), SAVE_COVER_IAMGE_SIZE])
-            target_ww = max_size if ww > hh else int(max_size * ww / hh)
-            target_hh = max_size if hh > ww else int(max_size * hh / ww)
-            dd = cc.resize((target_ww, target_hh))
-            buf = io.BytesIO()
-            dd.save(buf, format="JPEG")
-            tt.tag.images.set(3, buf.getvalue(), "image/jpeg", "album cover")
+            jpeg_buffer = download_image(song_info["cover_image"], SAVE_COVER_IAMGE_SIZE=SAVE_COVER_IAMGE_SIZE)
+            tt.tag.images.set(3, jpeg_buffer, "image/jpeg", "album cover")
         tt.tag.save(encoding="utf8")
     except UnicodeDecodeError as err:
         print("EyeD3 decode error: %s" % err)
+    except AttributeError as err:
+        print("EyeD3 reading error: %s" % err)
 
     dist_name = generate_target_file_name(dist_path, song_info["title"], song_info["artist"], song_format)
     if dist_name != file_path:
@@ -300,16 +331,48 @@ def netease_cache_rename_single(song_info, file_path, dist_path, KEEP_SOURCE=Tru
     return dist_name
 
 
+def uc_cache_decode(origin_filepath, result_filepath):
+    CODE = 0xA3
+    if os.path.exists(result_filepath):
+        return
+
+    with open(origin_filepath, "rb") as ff:
+        music = ff.read()
+    print(f"Decoding {origin_filepath}, Source file length: {len(music)}")
+    music_decode = bytearray()
+    for i, byte in enumerate(music):
+        sys.stdout.write("\rProgress: %d%%" % (round((i + 1) * 100 / len(music))))
+        sys.stdout.flush()
+        if type(byte) == str: # For Python 2
+            music_decode.append(int(byte.encode("hex"), 16) ^ CODE)
+        else: # For Python 3
+            music_decode.append(byte ^ CODE)
+
+    print()
+    with open(result_filepath, "wb") as ff:
+        ff.write(music_decode)
+
+
 def netease_cache_rename(source_path, dist_path, KEEP_SOURCE=True):
     for file_name in os.listdir(source_path):
-        if not file_name.endswith(".mp3"):
+        source_file_path = os.path.join(source_path, file_name)
+        if file_name.endswith(".uc"):
+            decode_file_name = os.path.splitext(file_name)[0] + ".mp3"
+            uc_cache_decode(source_file_path, os.path.join(source_path, decode_file_name))
+            file_name = decode_file_name
+            ffmpeg_command = f"ffmpeg -i {file_name} -c:a libmp3lame -q:a 2 -id3v2_version 3 -write_id3v1 1 fixed_{file_name}"
+            print(f">>>> Currently uc cache decoded can be not MP3. It may be AAC format.")
+            print(f"     Needs to run ffmpeg commant first: {ffmpeg_command}")
+            print()
+            continue
+        elif not file_name.endswith(".mp3"):
             continue
         if not len(file_name.split("-")) == 3:
             print(">>>> File %s not in format <song id>-<bite rate>-<random number>.mp3" % (file_name))
             continue
 
         song_id = file_name.split("-")[0]
-        netease_cache_rename_single(song_id, os.path.join(source_path, file_name), dist_path, KEEP_SOURCE)
+        netease_cache_rename_single(song_id, source_file_path, dist_path, KEEP_SOURCE)
 
 
 def parse_arguments(argv):

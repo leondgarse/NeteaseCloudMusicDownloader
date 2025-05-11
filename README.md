@@ -80,6 +80,26 @@
     'KOKIA - ありがとう….mp3'
     'Paris Brune - Mustang cabriolet.mp3'
     ```
+## Windows Cache decode
+  - `uc` cache 实际文件格式可能是 AAC，需要转码，可以通过 [Github BtbN/FFmpeg-Builds/releases](https://github.com/BtbN/FFmpeg-Builds/releases) 下载并解压 `ffmpeg`
+    ```sh
+    $ ./bin/ffmpeg -i xxx.mp3 -c:a copy -id3v2_version 3 -write_id3v1 1 yyy.mp3
+    Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '1160377-320-74105b37be18fc325f3effbad46ddbbe.mp3':
+      Metadata:
+        major_brand     : M4A
+        minor_version   : 512
+        compatible_brands: M4A isomiso2
+        encoder         : Lavf58.76.100
+      Duration: 00:04:38.80, start: 0.000000, bitrate: 257 kb/s
+      Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 256 kb/s (default)
+        Metadata:
+          handler_name    : SoundHandler
+          vendor_id       : [0][0][0][0]
+    ```
+  - 缓存位于 `C:\Users\Administrator\AppData\Local\NetEase\CloudMusic\Cache\Cache`，将其复制到 `ffmpeg` 下的 `Cache`
+  - `uc` 文件解码，解码后文件依然位于 `Cache` 下: `python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s Cache`
+  - 解码 `mkdir -p fixed_Cache && ls Cache/*.mp3 | xargs -I {} ./bin/ffmpeg.exe -i {} -c:a libmp3lame -q:a 0 -id3v2_version 3 -write_id3v1 1 fixed_{}`，
+  - 转码后再重命名一次 `python ~/workspace/NeteaseCloudMusicDownloader/netease_rename.py -s fixed_Cache -d fixed_output`
 ## 参数
   - `-h, --help` 帮助信息
   - `-d DIST_PATH, --dist_path DIST_PATH` 输出路径，默认 `./output_music`
@@ -112,7 +132,7 @@
     - Baidu flac
   - 可以同时指定多个下载源，并按照顺序使用下载源下载
   - 支持指定 `<song id list>` 下载，如果指定了，则优先级高于 playlist /album
-  - 通过 `num_workers` 参数指定同时下载的线程数量，默认 `10`，在调试时应指定为 `1`，否则 log 输出顺序被打乱
+  - 通过 `num_workers` 参数指定同时下载的线程数量，默认 `5`，在调试时应指定为 `1`，否则 log 输出顺序被打乱
 ## 使用说明示例
   - **开始下载**
     ```shell
@@ -160,7 +180,7 @@
   - `-a ALBUM, --album ALBUM` 下载的专辑，默认 `None`
   - `-Q, --queue` 根据缓存的播放列表 `~/.cache/netease-cloud-music/StorageCache/webdata/file/queue` 下载，默认 `False`
   - `--song_id_list [SONG_ID_LIST [SONG_ID_LIST ...]]` 指定一个 song id list 下载，而不使用 playlist，格式可以是 `1 2 3` 或 `1, 2, 3`
-  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `10`
+  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `5`
   - `-H, --head` 只下载前 [NUM] 个
   - `--outer` 指定使用 outer url 方式下载，默认方式
   - `--bitrate` 指定使用 bitrate url 方式下载，可以指定 bitrate=320k，容易检测为 cheating
@@ -196,7 +216,7 @@
     - 如果本地都不存在，从 Netease 下载并移动到 `<dist_path>`
   - 所有文件都会更新 ID3 信息，并重新下载专辑封面图片
   - 选项 `<--with_size_check>` 指定对比文件大小，会尝试下载音乐文件，如果下载的文件大小大于本地文件 **500K**，则保留下载的文件
-  - 通过 `num_workers` 参数指定同时下载的线程数量，默认 `10`，在调试时应指定为 `1`，否则 log 输出顺序被打乱
+  - 通过 `num_workers` 参数指定同时下载的线程数量，默认 `5`，在调试时应指定为 `1`，否则 log 输出顺序被打乱
 ## 使用说明示例
   - **开始更新**
     ```shell
@@ -240,7 +260,7 @@
   - `-p PLAYLIST, --playlist PLAYLIST` 播放列表 ID，默认 `101562485`
   - `-a ALBUM, --album ALBUM` 专辑 ID，默认 `None`
   - `-Q, --queue` 根据缓存的播放列表 `~/.cache/netease-cloud-music/StorageCache/webdata/file/queue` 下载，默认 `False`
-  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `10`
+  - `-n NUM_WORKERS, --num_workers NUM_WORKERS` 指定同时下载的线程数量，默认 `5`
   - `-H, --head` 只更新前 [NUM] 个
   - `--song_id_list [SONG_ID_LIST [SONG_ID_LIST ...]]` 指定一个 song id list 下载，而不使用 playlist，格式可以是 `1 2 3` 或 `1, 2, 3`
   - `-d DIST_PATH, --dist_path DIST_PATH` 输出路径，默认 `./Netease_refreshed`
