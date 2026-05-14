@@ -150,7 +150,10 @@ def detect_netease_music_name(song_id):
     song_info["title"] = rr["songs"][0]["name"]
     song_info["artist"] = ",".join([ii["name"] for ii in rr["songs"][0]["ar"]])
     song_info["album"] = rr["songs"][0]["al"]["name"]
-    song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
+    try:
+        song_info["track_num"] = (int(rr["songs"][0]["no"]), int(rr["songs"][0]["cd"]))
+    except (ValueError, TypeError):
+        song_info["track_num"] = (0, 0)
     song_info["cover_image"] = rr["songs"][0]["al"]["picUrl"]
     song_info["id"] = song_id
 
