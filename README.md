@@ -20,6 +20,10 @@
   	- [功能](#功能)
   	- [使用说明示例](#使用说明示例)
   	- [参数](#参数)
+  - [netease cloud match 网易云盘歌曲匹配](#netease-cloud-match-网易云盘歌曲匹配)
+  	- [功能](#功能)
+  	- [使用说明示例](#使用说明示例)
+  	- [参数](#参数)
   - [Test 功能测试](#Test-功能测试)
 
   <!-- /TOC -->
@@ -32,11 +36,13 @@
   - **pip 安装包**
     ```shell
     $ pip install eyed3 requests shutil pycryptodomex
+    $ pip install qrcode  # 可选，用于终端显示登录二维码
     ```
     - **eyed3** mp3 文件属性赋值，如 title / artist / album / album_artist
     - **requests** 网页请求
     - **shutil** 文件复制
     - **Crypto** 加密
+    - **qrcode** 可选，终端显示扫码登录二维码
 
 # 参考项目
   - [darknessomi/musicbox](https://github.com/darknessomi/musicbox)
@@ -286,6 +292,37 @@
     # 指定对比文件大小
     ./netease_refresh_by_playlist.py ~/Downloads/netease/ -p 101562485 -d ~/Downloads/netease_refreshed --with_size_check
     ```
+***
+
+# netease cloud match 网易云盘歌曲匹配
+## 功能
+  - 上传到网易云盘的本地文件，大多无法自动关联到网易云中的歌曲，需要手动搜索匹配。该脚本根据播放列表 `<playlist>` 自动完成匹配
+    - 获取播放列表中的歌曲，按 `netease_refresh_by_playlist.py` 的命名规则生成文件名 `歌手名 - 歌曲名.mp3`
+    - 获取云盘中的全部歌曲，按上传的文件名，或 ID3 中的歌手名 / 歌曲名，查找播放列表中对应的歌曲
+    - 对尚未关联到对应歌曲的云盘歌曲，调用云盘匹配接口关联
+  - **需要登录**，登录信息保存在 `netease_rename_cookie.pkl`，过期后重新登录
+    - 已安装 `qrcode` 时，在终端显示二维码，**使用网易云音乐 App 扫码**，注意在浏览器中打开二维码链接无效
+    - 未安装 `qrcode` 时，提示输入 cookie `MUSIC_U`：浏览器登录 https://music.163.com 后，在 DevTools -> Application -> Cookies 中复制
+## 使用说明示例
+  - **先使用 dry run 检查匹配结果**
+    ```shell
+    $ ./netease_cloud_match.py -p 101562485 -D
+    >>>> Logged in as: xxx, user_id: xxx
+    >>>> Playlist 101562485 total songs: xxx
+    >>>> Cloud songs total: xxx
+    >>>> Already matched: xxx, to match: xxx, not found in playlist: xxx
+    >>>> [Dry run] [1/xxx] Aimer - カタオモイ.mp3 -> <song id>: Aimer - カタオモイ
+    ...
+    ```
+  - **执行匹配**
+    ```shell
+    $ ./netease_cloud_match.py -p 101562485
+    ```
+## 参数
+  - `-h, --help` 帮助信息
+  - `-p PLAYLIST, --playlist PLAYLIST` 播放列表 ID，默认 `101562485`
+  - `-D, --dry_run` 只打印匹配结果，不实际关联
+  - `--music_u MUSIC_U` 使用浏览器中复制的 cookie `MUSIC_U` 登录
 ***
 
 # Test 功能测试

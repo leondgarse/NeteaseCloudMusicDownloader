@@ -28,7 +28,10 @@ global_requests_func = None
 
 
 class Requsets_with_login:
-    def __init__(self, user_data_bak_path=None):
+    """Session with optional login. Login is done by scanning QR code with Netease app, or by providing MUSIC_U cookie.
+    Saved cookies are reloaded from user_data_bak_path. If require_login is False and no valid saved cookies, go on without login.
+    """
+    def __init__(self, user_data_bak_path=None, require_login=False, music_u=None):
         if user_data_bak_path == None:
             save_name = os.path.splitext(os.path.basename(__file__))[0] + "_cookie.pkl"
             save_dir = os.path.dirname(os.path.abspath(__file__))
@@ -36,85 +39,131 @@ class Requsets_with_login:
         else:
             self.user_data_bak_path = user_data_bak_path
 
-        if True:
-            print(">>>> Login currenly not working, skip...")
-            self.session = self.__default_seesion__()
+        self.session = self.__default_seesion__()
+        self.profile = None
+        if music_u is not None:
+            self.session.cookies.set("MUSIC_U", music_u, domain=".music.163.com")
+            self.profile = self.__check_login__()
+            if self.profile is None:
+                print(">>>> Provided MUSIC_U is not valid")
+            else:
+                self.__save_cookie__()
         elif os.path.exists(self.user_data_bak_path):
-            self.session = self.__reload_cookie__()
+            self.profile = self.__reload_cookie__()
+
+        if self.profile is None and require_login:
+            self.profile = self.__qrcode_login__()
+        if self.profile is None:
+            if require_login:
+                raise RuntimeError("Login failed")
+            print(">>>> Go on without login")
         else:
-            self.session = self.__new_login__()
+            print(">>>> Logged in as: {}, user_id: {}".format(self.profile["nickname"], self.profile["userId"]))
 
     def __default_seesion__(self):
         session = requests.Session()
-        session.cookies.set("os", "pc", domain="music.163.com")
-        session.cookies.set("appver", "2.9.7", domain="music.163.com")
+        # Not using headers["Cookie"], or it will override session cookies like MUSIC_U
+        session.headers.update({kk: vv for kk, vv in headers.items() if kk != "Cookie"})
+        rand_str = lambda: "".join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+        default_cookies = {"os": "pc", "appver": "2.9.7", "_ntes_nuid": rand_str(), "NMTID": rand_str()}
+        for kk, vv in default_cookies.items():
+            session.cookies.set(kk, vv, domain=".music.163.com")
         return session
 
-    def __new_login__(self):
-        print(">>>> Requires login first")
-        print(">>>> Requires login first")
-        user_name = input("Netease user_name: ")
-        password = input("Netease password: ")
-        print(">>>> [Login info] user_name: {}, password: {}".format(user_name, password))
-        return self.__request_login__(user_name, password)
+    @property
+    def user_id(self):
+        return None if self.profile is None else self.profile["userId"]
 
-    def __request_login__(self, user_name, password):
-        from encrypt import encrypted_request
-        from hashlib import md5
+    def __check_login__(self):
+        try:
+            profile = self.weapi_post("https://music.163.com/weapi/w/nuser/account/get").json().get("profile")
+        except Exception as err:
+            print(">>>> Check login error:", err)
+            profile = None
+        return profile
 
-        session = self.__default_seesion__()
-        password_md5 = md5(password.encode("utf-8")).hexdigest()
-
-        if user_name.isdigit() and len(user_name) == 11:  # phone number
-            login_url = "http://music.163.com/api/login/cellphone"
-            params = dict(
-                phone=user_name,
-                password=password_md5,
-                countrycode="86",
-                rememberLogin="true",
-            )
+    def __music_u_input_login__(self):
+        print(">>>> [qrcode] not installed, run `pip install qrcode` to login by scanning QR code in terminal.")
+        print("     Or login https://music.163.com in browser, copy value of cookie MUSIC_U from DevTools -> Application -> Cookies")
+        music_u = input("MUSIC_U (empty to skip): ").strip()
+        if len(music_u) == 0:
+            return None
+        self.session.cookies.set("MUSIC_U", music_u, domain=".music.163.com")
+        profile = self.__check_login__()
+        if profile is None:
+            print(">>>> Provided MUSIC_U is not valid")
         else:
-            login_url = "http://music.163.com/weapi/login"
-            params = dict(
-                phone=user_name,
-                password=password_md5,
-                rememberLogin="true",
-            )
-        # params = encrypted_request(params)
+            self.__save_cookie__()
+        return profile
 
-        ret = session.post(login_url, data=params, headers=headers)
-        data = {"user_name": user_name, "password": password}
-        if not (ret.ok and ret.json()["code"] == 200):
-            print(">>>> Error for login in, will go on without login")
-        else:
-            print(">>>> Login successfully!")
-            data.update({"cookies": session.cookies})
-        print(">>>> Save user data to:", self.user_data_bak_path)
+    def __qrcode_login__(self, timeout=180):
+        try:
+            import qrcode
+        except ImportError:
+            return self.__music_u_input_login__()
+
+        unikey = self.weapi_post("https://music.163.com/weapi/login/qrcode/unikey", {"type": 1}).json()["unikey"]
+        # This url only works when scanned by Netease Cloud Music app, not opened in browser
+        qr_url = "https://music.163.com/login?codekey={}".format(unikey)
+        print(">>>> Scan QR code using Netease Cloud Music app to login:")
+        qr = qrcode.QRCode(border=1)
+        qr.add_data(qr_url)
+        qr.print_ascii(invert=True)
+
+        prev_code = None
+        for _ in range(timeout // 2):
+            sleep(2)
+            ret = self.weapi_post("https://music.163.com/weapi/login/qrcode/client/login", {"key": unikey, "type": 1}).json()
+            code = ret.get("code")
+            if code != prev_code:
+                print(">>>> QR code login status: {}, {}".format(code, ret.get("message", "")))
+                prev_code = code
+            if code == 803:  # Success, cookies like MUSIC_U are set by response
+                profile = self.__check_login__()
+                if profile is not None:
+                    self.__save_cookie__()
+                return profile
+            elif code not in (801, 802):  # 800 expired, 8821 requires verification
+                print(">>>> QR code login failed, try providing MUSIC_U cookie from browser instead")
+                return None
+        print(">>>> QR code login timeout")
+        return None
+
+    def __save_cookie__(self):
+        print(">>>> Save user cookies to:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "wb") as ff:
-            pickle.dump(data, ff)
-        return session
+            pickle.dump({"cookies": requests.utils.dict_from_cookiejar(self.session.cookies)}, ff)
 
     def __reload_cookie__(self):
-        print(">>>> Load user data from:", self.user_data_bak_path)
+        print(">>>> Load user cookies from:", self.user_data_bak_path)
         with open(self.user_data_bak_path, "rb") as ff:
             user_data = pickle.load(ff)
-        cookies = user_data.get("cookies", [])
-        if len(cookies) == 0:
-            print(">>>> Empty cookies due to previous login failure, will skip login")
-            session = self.__default_seesion__()
-        elif sum([ii.is_expired() for ii in cookies]) != 0:  # expired
-            print(">>>> user login data expired, login again:", {ii.name: ii.is_expired() for ii in cookies})
-            session = self.__request_login__(user_data["user_name"], user_data["password"])
-        else:
-            session = requests.Session()
-            session.cookies.update(cookies)
-        return session
+        cookies = user_data.get("cookies", {})
+        if not isinstance(cookies, dict):  # Old format saving a RequestsCookieJar
+            cookies = requests.utils.dict_from_cookiejar(cookies)
+        if "MUSIC_U" not in cookies:
+            print(">>>> No MUSIC_U in saved cookies, skip")
+            return None
+        for kk, vv in cookies.items():
+            self.session.cookies.set(kk, vv, domain=".music.163.com")
+        profile = self.__check_login__()
+        if profile is None:
+            print(">>>> Saved cookies expired")
+            self.session = self.__default_seesion__()
+        return profile
 
     def get(self, url):
-        return self.session.get(url, headers=headers)
+        return self.session.get(url)
 
     def post(self, url, data=None, timeout=30):
-        return self.session.post(url, data=data, timeout=timeout, headers=headers)
+        return self.session.post(url, data=data, timeout=timeout)
+
+    def weapi_post(self, url, params=None, timeout=30):
+        from encrypt import encrypted_request
+
+        csrf = self.session.cookies.get("__csrf", "")
+        params = dict(params or {}, csrf_token=csrf)
+        return self.session.post(url, params={"csrf_token": csrf}, data=encrypted_request(params), timeout=timeout)
 
 
 def detect_netease_music_name(song_id):
