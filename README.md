@@ -54,6 +54,10 @@
     From: source path/<song id>-<bite rate>-<random number>.mp3
     To: dist path/<artist name> - <song title>.mp3
     ```
+  - **eyed3 报错处理** 一般可尝试 ffmpeg 转化一次
+    ```sh
+    $ ffmpeg -i xxx.mp3 -c:a copy -id3v2_version 3 -write_id3v1 1 yyy.mp3
+    ```
 ## 使用说明示例
   - 在 Ubuntu 上使用网易云音乐的客户端，其缓存直接是 mp3 文件，缓存在 `~/.cache/netease-cloud-music/CachedSongs/`
     ```shell
@@ -346,4 +350,47 @@
   plt.savefig('year_plot.svg')
   ```
   ![](year_plot.svg)
+## Tempo analysis
+  - Measuring music tempo stability with librosa and notes on human timing-jitter perception.
+  ```py
+  import librosa, numpy as np
+  from tqdm import tqdm
+
+  dd = []
+  music_path = os.path.expanduser('~/Music/Netease/')
+  for file in tqdm(os.listdir(music_path)):
+      y, sr = librosa.load(os.path.join(music_path, file), mono=True)
+      tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+      beat_time = librosa.frames_to_time(beat_frames, sr=sr)
+      # beats = beat_time[1:] - beat_time[:-1]
+      beats = np.array(beat_time[11:-10] - beat_time[10:-11])
+      dd.append({"name": file, "tempo": tempo[0], "mean": 60 / np.mean(beats), "std": np.std(beats), "cv": np.std(beats) * tempo[0] / 60})
+  df = pd.DataFrame(dd).set_index('name')
+
+  np.savez("music_stats.npz", name=df.index.values, **{kk: df[kk].values for kk in df.columns})
+
+  data = np.load("music_stats.npz", allow_pickle=True)
+  aa = {kk: data[kk] for kk in data.keys()}
+  df = pd.DataFrame(aa).set_index('name')
+
+  # Human perception of timing jitter
+  # Below ~3% (≈10–20 ms at normal tempos): Usually imperceptible, sounds perfectly steady (like quantized drums).
+  # ~3–6% (≈20–40 ms): Noticeable as a “human feel” or groove, but still stable. Common in live bands.
+  # >8–10% (≈50–80+ ms): Starts sounding unstable, dragging/rushing becomes obvious. DJs or sequencers would call this “off” or “sloppy.”
+  df["stability"] = pd.cut(df["cv"] * 100, bins=[0, 3, 6, 100], labels=["tight", "natural groove", "loose"])
+
+  print(df[['第一次爱的人' in ii or 'Italia' in ii or 'Contra' in ii or "Mourning" in ii for ii in df.index]].to_markdown())
+  # | name                                              |   tempo | beat mean |   beat std |   beat cv | beat stability   |
+  # |:--------------------------------------------------|--------:|--------:|-----------:|----------:|:------------|
+  # | 王心凌 - 第一次爱的人.mp3                         | 95.7031 | 94.0038 | 0.0137577  | 0.0219442 | tight       |
+  # | Pnan,HSHK,VodKe,Alpha - Italia e voi（Reset）.mp3 | 95.7031 | 94.9908 | 0.00933088 | 0.0148832 | tight       |
+  # | Álvaro Soler,David Bisbal - A Contracorriente.mp3 | 95.7031 | 94.9943 | 0.0158946  | 0.0253526 | tight       |
+  # | Mabanua - Mourning.mp3                            | 95.7031 | 96.986  | 0.0161997  | 0.0258394 | tight       |
+
+  print(df[[94 < ii < 96 for ii in df.tempo]].to_markdown())
+  # | name                                              |   tempo |    mean |        std |        cv | stability      |
+  # |:--------------------------------------------------|--------:|--------:|-----------:|----------:|:---------------|
+  # | Aimer - カタオモイ.mp3                            | 95.7031 | 96.6578 | 0.0320813  | 0.0511713 | natural groove |
+  # ...
+  ```
 ***
